@@ -1,0 +1,265 @@
+import pygame
+import sys
+import random
+from pygame.locals import *
+
+# Initialize Pygame
+pygame.init()
+
+# Set up the window
+WINDOW_SIZE = (800, 700)  # Increased overall height
+screen = pygame.display.set_mode(WINDOW_SIZE)
+pygame.display.set_caption("Pop Anti-Virus")
+
+# Load the icon image
+icon = pygame.image.load('balloon.png')
+pygame.display.set_icon(icon)
+
+# Define colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+LIGHT_BLUE = (173, 216, 230)
+PINK = (255, 192, 203)  # Pink color
+
+# Load the sky image
+sky_image1 = pygame.image.load("bg.jpeg")  # Replace "sky_image.png" with your sky image file path
+sky_image = pygame.transform.scale(sky_image1, WINDOW_SIZE)  # Scale sky image to match window size
+
+# Load the road image
+road_image = pygame.image.load("base.png")  # Replace "road_image.png" with your road image file path
+
+# Load the player image
+player_image1 = pygame.image.load("play1.jpg")  # Replace "player.png" with your player image file path
+background_color = player_image1.get_at((0, 0))
+player_image1.set_colorkey(background_color)
+player_image = pygame.transform.scale(player_image1, (160, 160))
+
+# Load balloon images and remove white background
+red_balloon_image = pygame.image.load("balloon (2).png")
+blue_balloon_image = pygame.image.load("balloon (1).png")
+
+# Set up fonts
+font = pygame.font.Font(None, 36)
+
+# Function to create text objects
+def create_text(text, color):
+    return font.render(text, True, color)
+
+# Function to create a rectangular box around text
+def create_rect_around_text(text_surf, rect_color, padding):
+    rect = text_surf.get_rect()
+    rect.inflate_ip(padding, padding)
+    pygame.draw.rect(screen, rect_color, rect, 2)
+    return rect
+
+# Main menu options
+play_text = create_text("PLAY", BLACK)
+rules_text_main = create_text("RULES", BLACK)
+exit_text = create_text("EXIT", BLACK)
+
+# Positioning for menu options
+play_rect = play_text.get_rect(center=(WINDOW_SIZE[0] // 2, WINDOW_SIZE[1] // 2 - 50))
+rules_rect_main = rules_text_main.get_rect(center=(WINDOW_SIZE[0] // 2, WINDOW_SIZE[1] // 2))
+exit_rect = exit_text.get_rect(center=(WINDOW_SIZE[0] // 2, WINDOW_SIZE[1] // 2 + 50))
+
+# Options for the "BACK" button page
+continue_text = create_text("CONTINUE", BLACK)
+exit_game_text = create_text("EXIT GAME", BLACK)
+exit_to_menu_text = create_text("EXIT TO MAIN MENU", BLACK)
+
+# Positioning for the options on the "BACK" button page
+continue_rect = continue_text.get_rect(center=(WINDOW_SIZE[0] // 2, WINDOW_SIZE[1] // 2 - 100))
+exit_game_rect = exit_game_text.get_rect(center=(WINDOW_SIZE[0] // 2, WINDOW_SIZE[1] // 2))
+exit_to_menu_rect = exit_to_menu_text.get_rect(center=(WINDOW_SIZE[0] // 2, WINDOW_SIZE[1] // 2 + 100))
+
+# Rules for the game
+rule_texts = [
+    "1. Use LEFT and RIGHT arrow button to move around",
+    "2. Try to AVOID the RED BALLOONS as they contain VIRUSES",
+    "3. Shoot at the BLUE BALLOONS by clicking SPACE",
+    "4. Every BLUE BALLOON you pop will display a message",
+    "5. Every Blue balloon is +1 point",
+    "6. If you hit the Red Balloon then -5 points"
+]
+
+# Create text objects for rules
+rule_surfaces = [create_text(rule, BLACK) for rule in rule_texts]
+
+# Calculate total height of all rules text and gap between rules
+total_rule_height = sum([rule.get_height() for rule in rule_surfaces])
+gap = 10  # Gap between rules
+
+# Positioning for rules
+start_y = (WINDOW_SIZE[1] - total_rule_height - gap * (len(rule_surfaces) - 1)) // 2  # Starting y-coordinate
+rule_rects = []
+y = start_y
+for rule_surface in rule_surfaces:
+    rect = rule_surface.get_rect(topleft=(20, y))
+    rule_rects.append(rect)
+    y += rect.height + gap  # Increase y-coordinate by text height and gap
+
+# Positioning for the "RULES" text
+rules_title_text = create_text("RULES", BLACK)
+rules_title_rect = rules_title_text.get_rect(center=(WINDOW_SIZE[0] // 2, 50))
+
+# Define player_rect outside of any conditional blocks
+player_rect = player_image.get_rect(center=(WINDOW_SIZE[0] // 2 , WINDOW_SIZE[1] // 2 + 180))
+
+# Boolean variables to track screens and actions
+show_initial_screen = True
+show_rules_screen = False
+show_play_screen = False
+show_options_screen = False
+show_main_menu = False
+execute_action = False
+
+# Variables to track player movement
+moving_left = False
+moving_right = False
+
+# Balloon class
+class Balloon(pygame.sprite.Sprite):
+    def __init__(self, image, speed):
+        super().__init__()
+        self.image = image
+        self.rect = self.image.get_rect()
+        self.rect.x = random.randint(50, 750)
+        self.rect.y = -self.rect.height
+        self.speed = speed
+
+    def update(self):
+        self.rect.y += self.speed
+        if self.rect.top > WINDOW_SIZE[1]:
+            self.rect.y = -self.rect.height
+            self.rect.x = random.randint(50, 750)
+            pygame.sprite.spritecollide(self, all_sprites, False)
+            self.rect.y -= 60
+
+# Create balloon instances
+all_sprites = pygame.sprite.Group()
+balloon_group = pygame.sprite.Group()
+
+for _ in range(2):
+    red_balloon = Balloon(red_balloon_image, 1)
+    blue_balloon = Balloon(blue_balloon_image, 1)  # Use blue balloon image
+    all_sprites.add(red_balloon)
+    balloon_group.add(red_balloon)
+
+# Main game loop
+while True:
+    # Handle events
+    for event in pygame.event.get():
+        if event.type == QUIT:
+            pygame.quit()
+            sys.exit()
+        elif event.type == MOUSEBUTTONDOWN:
+            # Check if PLAY, RULES, or EXIT option is clicked
+            if show_initial_screen:
+                if play_rect.collidepoint(pygame.mouse.get_pos()):
+                    show_initial_screen = False
+                    show_play_screen = True
+                elif rules_rect_main.collidepoint(pygame.mouse.get_pos()):
+                    show_initial_screen = False
+                    show_rules_screen = True
+                elif exit_rect.collidepoint(pygame.mouse.get_pos()):
+                    pygame.quit()
+                    sys.exit()
+            # Check if PAUSE button is clicked
+            elif show_play_screen:
+                mouse_pos = pygame.mouse.get_pos()
+                if 10 <= mouse_pos[0] <= 100 and 10 <= mouse_pos[1] <= 40:
+                    show_play_screen = False
+                    show_options_screen = True
+            # Check if CONTINUE or EXIT option is clicked
+            elif show_options_screen:
+                mouse_pos = pygame.mouse.get_pos()
+                if continue_rect.collidepoint(mouse_pos):
+                    show_options_screen = False
+                    show_play_screen = True
+                elif exit_game_rect.collidepoint(mouse_pos):
+                    pygame.quit()
+                    sys.exit()
+                elif exit_to_menu_rect.collidepoint(mouse_pos):
+                    show_options_screen = False
+                    show_initial_screen = True
+            # Check if BACK button is clicked on the rules screen
+            elif show_rules_screen:
+                mouse_pos = pygame.mouse.get_pos()
+                if WINDOW_SIZE[0] // 2 - 50 <= mouse_pos[0] <= WINDOW_SIZE[0] // 2 + 50 \
+                        and WINDOW_SIZE[1] - 50 <= mouse_pos[1] <= WINDOW_SIZE[1] - 20:
+                    show_rules_screen = False
+                    show_initial_screen = True
+
+        # Handle player movement with arrow keys
+        elif event.type == KEYDOWN:
+            if event.key == K_LEFT:
+                moving_left = True
+            elif event.key == K_RIGHT:
+                moving_right = True
+        elif event.type == KEYUP:
+            if event.key == K_LEFT:
+                moving_left = False
+            elif event.key == K_RIGHT:
+                moving_right = False
+
+    # Update player position based on movement
+    if moving_left:
+        player_rect.move_ip(-1, 0)
+    if moving_right:
+        player_rect.move_ip(1, 0)
+
+    # Ensure the player stays within the boundaries of the window
+    if player_rect.left < -30:
+        player_rect.left = -30
+    elif player_rect.right > WINDOW_SIZE[0] + 35:
+        player_rect.right = WINDOW_SIZE[0] + 35
+
+    # Fill the screen with appropriate color based on the screen being shown
+    if show_initial_screen:
+        screen.fill(WHITE)
+    elif show_rules_screen:
+        screen.fill(PINK)
+    else:
+        screen.fill(WHITE)
+
+    # Display the appropriate screen content
+    if show_initial_screen:
+        # Draw main menu options
+        screen.blit(play_text, play_rect)
+        screen.blit(rules_text_main, rules_rect_main)
+        screen.blit(exit_text, exit_rect)
+    elif show_rules_screen:
+        # Draw "RULES" text
+        screen.blit(rules_title_text, rules_title_rect)
+        # Draw rules
+        for rule_surface, rect in zip(rule_surfaces, rule_rects):
+            screen.blit(rule_surface, rect)
+        # Draw BACK button
+        pygame.draw.rect(screen, LIGHT_BLUE, (WINDOW_SIZE[0] // 2 - 50, WINDOW_SIZE[1] - 50, 100, 30))
+        back_text = create_text("BACK", BLACK)
+        back_rect = back_text.get_rect(center=(WINDOW_SIZE[0] // 2, WINDOW_SIZE[1] - 35))
+        screen.blit(back_text, back_rect)
+    elif show_play_screen:
+        # Draw the sky image
+        screen.blit(sky_image, (0, 0))
+        # Draw the road image at the bottom of the screen
+        screen.blit(road_image, (0, WINDOW_SIZE[1] - road_image.get_height() + 250))
+        # Draw balloons
+        balloon_group.update()
+        balloon_group.draw(screen)
+        # Draw the player character
+        screen.blit(player_image, player_rect)
+        # Draw PAUSE button
+        pygame.draw.rect(screen, LIGHT_BLUE, (10, 10, 90, 30))
+        pause_text = create_text("PAUSE", BLACK)
+        pause_rect = pause_text.get_rect(center=(55, 25))
+        screen.blit(pause_text, pause_rect)
+    elif show_options_screen:
+        # Draw CONTINUE, EXIT TO MAIN MENU, and EXIT GAME options
+        pygame.draw.rect(screen, LIGHT_BLUE, (200, 200, 400, 300))
+        screen.blit(continue_text, continue_rect)
+        screen.blit(exit_game_text, exit_game_rect)
+        screen.blit(exit_to_menu_text, exit_to_menu_rect)
+
+    # Update the display
+    pygame.display.update()
